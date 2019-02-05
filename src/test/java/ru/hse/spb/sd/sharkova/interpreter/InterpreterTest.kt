@@ -183,9 +183,58 @@ class InterpreterTest {
         assertEquals(listOf(expected), res)
     }
 
-    // TODO external command test?
+    @Test
+    fun testNoIdentifierDollarSignEcho() {
+        val res = Parser.parseInput("echo \$не_идентификатор")
+        assertEquals(listOf("\$не_идентификатор\n"), res)
+    }
 
+    @Test
+    fun testDoubleQuotesEcho() {
+        val res = Parser.parseInput("echo \"text with spaces\"")
+        assertEquals(listOf("text with spaces\n"), res)
+    }
 
+    @Test
+    fun testMultipleDoubleQuotesEcho() {
+        val res = Parser.parseInput("echo \"\"text with spaces\"\" and more \"and even more\"")
+        assertEquals(listOf("text with spaces and more and even more\n"), res)
+    }
+
+    @Test (expected = MismatchedQuotesException::class)
+    fun testMismatchedDoubleQuotesEcho() {
+        Parser.parseInput("echo \"\"x\"")
+    }
+
+    @Test
+    fun testDoubleQuotesWithSubstitutionEcho() {
+        Parser.parseInput("x=text")
+        val res1 = Parser.parseInput("echo \"\$x\"")
+        assertEquals(listOf("text\n"), res1)
+        val res2 = Parser.parseInput("echo \"$\"x\"\"")
+        assertEquals(listOf("\$ x\n"), res2)
+    }
+
+    @Test
+    fun testSingleQuotes() {
+        val res = Parser.parseInput("echo \'text\'")
+        assertEquals(listOf("text\n"), res)
+    }
+
+    @Test
+    fun testNestedQuotes() {
+        val res1 = Parser.parseInput("echo \'\"text\"\'")
+        assertEquals(listOf("text\n"), res1)
+        val res2 = Parser.parseInput("echo \"\'text\'\"")
+        assertEquals(listOf("text\n"), res2)
+    }
+
+    @Test
+    fun testSingleQuotesWithSubstitutionEcho() {
+        Parser.parseInput("x=text")
+        val res = Parser.parseInput("echo \'\$x\'")
+        assertEquals(listOf("\$x\n"), res)
+    }
 
     // method taken from: https://stackoverflow.com/a/41495542/7735110
     private fun String.runCommand(): String {
@@ -203,6 +252,4 @@ class InterpreterTest {
 
         return ""
     }
-
-
 }

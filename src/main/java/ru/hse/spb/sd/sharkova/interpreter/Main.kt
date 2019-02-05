@@ -1,14 +1,16 @@
 package ru.hse.spb.sd.sharkova.interpreter
 
-import java.io.File
-
-
+/**
+ * This method reads input, parses it, and executes its commands.
+ */
 fun main(args: Array<String>) {
-    //val line = File("file1.txt").readLi
-    /*while (true) {
+    while (true) {
         val command = readLine() ?: return
-        //val command = "x=wow"
-        val res = Parser.parseInput(command)
-        res.forEach { println(it) }
-    }*/
+        try {
+            val res = Parser.parseInput(command)
+            res.forEach { println(it) }
+        } catch (e: ParserException) {
+            println(e.message)
+        }
+    }
 }
