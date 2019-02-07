@@ -107,42 +107,42 @@ class CLIParser : Parser {
     private fun extractQuotesFromArgument(string: String): String {
         var str = string.trim()
         var shouldPerformSubstitution = true
-        while (true) {
-            var i = str.indexOf('\'')
-            var j = str.lastIndexOf('\'')
+
+        fun extractQuotes(string: String, quote: Char): Triple<String, String, String>? {
+            var i = string.indexOf(quote)
+            var j = string.lastIndexOf(quote)
             if (i != -1 && j != -1) {
                 if (i == j) {
                     throw MismatchedQuotesException()
                 }
-                val precedingCharacters = str.substring(0, i)
-                val proceedingCharacters = str.substring(j + 1, str.length)
-                while (str[i] == '\'' && str[j] == '\'' && i < j) {
+                val precedingCharacters = string.substring(0, i)
+                val proceedingCharacters = string.substring(j + 1, string.length)
+                while (string[i] == quote && string[j] == quote && i < j) {
                     i++
                     j--
                 }
-                str = precedingCharacters +
-                        str.substring(IntRange(i, j)) +
-                        proceedingCharacters
+                return Triple(precedingCharacters, string.substring(IntRange(i, j)), proceedingCharacters)
+            }
+
+            return null
+        }
+
+        while (true) {
+            val extractedSingleQuotesString = extractQuotes(str, '\'')
+            if (extractedSingleQuotesString != null) {
+                str = extractedSingleQuotesString.first +
+                        extractedSingleQuotesString.second +
+                        extractedSingleQuotesString.third
             } else {
-                i = str.indexOf('\"')
-                j = str.lastIndexOf('\"')
-                if (i != -1 && j != -1) {
-                    if (i == j) {
-                        throw MismatchedQuotesException()
-                    }
-                    val precedingCharacters = str.substring(0, i)
-                    val proceedingCharacters = str.substring(j + 1, str.length)
-                    while (str[i] == '\"' && str[j] == '\"' && i < j) {
-                        i++
-                        j--
-                    }
+                val extractedDoubleQuotesString = extractQuotes(str, '\"')
+                if (extractedDoubleQuotesString != null) {
                     val substr = if (shouldPerformSubstitution) {
-                        substituteInString(str.substring(IntRange(i, j)))
+                        substituteInString(extractedDoubleQuotesString.second)
                     } else {
-                        str.substring(IntRange(i, j))
+                        extractedDoubleQuotesString.second
                     }
-                    str = precedingCharacters + substr + proceedingCharacters
-                    shouldPerformSubstitution = false // perform exactly once and only if "" are the outer quotes
+                    str = extractedDoubleQuotesString.first + substr + extractedDoubleQuotesString.third
+                    shouldPerformSubstitution = false
                 } else {
                     break
                 }
