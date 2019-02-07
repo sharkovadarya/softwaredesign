@@ -7,6 +7,10 @@ import java.lang.StringBuilder
 import java.nio.charset.Charset
 
 class Interpreter {
+    private interface CLICommand {
+        fun execute(arguments: List<String>): List<String>
+    }
+
     private object EchoCommand : CLICommand {
         override fun execute(arguments: List<String>): List<String> {
             return listOf(arguments.joinToString(" ") + "\n")

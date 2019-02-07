@@ -108,7 +108,7 @@ class CLIParser : Parser {
         var str = string.trim()
         var shouldPerformSubstitution = true
 
-        fun extractQuotes(string: String, quote: Char): Triple<String, String, String>? {
+            fun extractQuotes(string: String, quote: Char): Triple<String, String, String>? {
             var i = string.indexOf(quote)
             var j = string.lastIndexOf(quote)
             if (i != -1 && j != -1) {
