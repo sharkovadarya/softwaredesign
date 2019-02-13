@@ -245,6 +245,45 @@ class InterpreterTest {
         assertEquals(listOf("text with spaces\n"), res)
     }
 
+
+    @Test
+    fun testGrepSingleFile() {
+        val res = parser.parseInput("grep word src/test/resources/grep1.txt")
+        assertEquals(listOf("this is a word", "more words your way!"), res)
+    }
+
+    @Test
+    fun testGrepMultipleFiles() {
+        val res = parser.parseInput("grep word src/test/resources/grep1.txt src/test/resources/grep2.txt")
+        assertEquals(listOf("grep1.txt:this is a word", "grep1.txt:more words your way!", "grep2.txt:and this word"), res)
+    }
+
+    @Test
+    fun testGrepCaseInsensitive() {
+        val res = parser.parseInput("grep -i word src/test/resources/grep1.txt")
+        assertEquals(listOf("this is a word", "This is a Word.",
+                "These are some sad, sad WORDS!!!", "more words your way!"), res)
+    }
+
+    @Test
+    fun testGrepWholeWords() {
+        val res = parser.parseInput("grep -w word src/test/resources/grep1.txt")
+        assertEquals(listOf("this is a word"), res)
+    }
+
+    @Test
+    fun testNLinesAfter() {
+        val res = parser.parseInput("grep -A 2 word src/test/resources/grep1.txt")
+        assertEquals(listOf("this is a word", "This is a Word.",
+                "this is a sad,  sad world", "more words your way!"), res)
+    }
+
+    @Test
+    fun testPipeGrep() {
+        val res = parser.parseInput("cat src/test/resources/grep1.txt | grep word")
+        assertEquals(listOf("this is a word\n", "more words your way!"), res)
+    }
+
     // method taken from: https://stackoverflow.com/a/41495542/7735110
     private fun String.runCommand(): String {
         try {

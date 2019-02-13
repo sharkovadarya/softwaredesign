@@ -127,6 +127,76 @@ class Interpreter {
         }
     }
 
+    private object GrepCommand : CLICommand {
+        private var caseInsensitive = false
+        private var entireWord = false
+        private var nLinesAfter = 0
+        private lateinit var regex: Regex
+
+        private fun grep(regex: Regex, lines: List<String>): List<String> {
+            val result = mutableListOf<String>()
+            val regexForUsage = if (caseInsensitive) Regex("(?i)(?s).*$regex.*")
+                                      else Regex("(?s).*$regex.*")
+            lines.forEach { if (regexForUsage.matches(it)) result.add(it) }
+            return result
+        }
+
+        private fun wholeWordGrep(regex: Regex, lines: List<String>): List<String> {
+            return grep(Regex("\\b$regex\\b"), lines)
+        }
+
+        private fun afterMatchGrep(regex: Regex, lines: List<String>): List<String> {
+            val result = mutableListOf<String>()
+            val regexForUsage = if (caseInsensitive) Regex("(?i)(?s).*$regex.*")
+            else Regex("(?s).*$regex.*")
+            var i = 0
+            while (i < lines.size) {
+                if (regexForUsage.matches(lines[i])) {
+                    for (j in 0..nLinesAfter) {
+                        if (i >= lines.size) {
+                            break
+                        }
+                        result.add(lines[i++])
+                    }
+                } else {
+                    i++
+                }
+            }
+            return result
+        }
+
+        override fun execute(arguments: List<String>): List<String> {
+            var result = emptyList<String>()
+            try {
+                result = if (nLinesAfter > 0) {
+                    afterMatchGrep(regex, arguments)
+                } else {
+                    grep(regex, arguments)
+                }
+                if (entireWord) {
+                    result = wholeWordGrep(regex, result)
+                }
+
+            } catch (e: UninitializedPropertyAccessException) {}
+
+            clearArguments()
+            return result
+        }
+
+        fun setArguments(caseInsensitive: Boolean, entireWord: Boolean, nLinesAfter: Int, regex: Regex) {
+            this.caseInsensitive = caseInsensitive
+            this.entireWord = entireWord
+            this.nLinesAfter = nLinesAfter
+            this.regex = regex
+        }
+
+        private fun clearArguments() {
+            caseInsensitive = false
+            entireWord = false
+            nLinesAfter = 0
+        }
+    }
+
     private object PwdCommand : CLICommand {
         override fun execute(arguments: List<String>): List<String> {
             return listOf(System.getProperty("user.dir"))
@@ -186,6 +256,58 @@ class Interpreter {
      */
     fun executeFileWc(filenames: List<String>): List<String> {
         return WcFileCommand.execute(filenames)
+    }
+
+    /**
+     * This method executes the 'grep' command for input received via pipe.
+     * 'grep' outputs lines that contain the provided regular expressions.
+     * @param regexString regex to match
+     * @param lines input lines
+     * @param caseInsensitive makes matching case insensitive
+     * @param entireWord only match the exact whole word, no substrings
+     * @param nLinesAfter output extra n lines after
+     * @return list of lines that contain the regex
+     */
+    fun executePipeGrep(regexString: String, lines: List<String>,
+                        caseInsensitive: Boolean = false, entireWord: Boolean = false,
+                        nLinesAfter: Int = 0): List<String> {
+        GrepCommand.setArguments(caseInsensitive, entireWord, nLinesAfter, Regex(regexString))
+        return GrepCommand.execute(lines)
+    }
+
+    /**
+     * This method executes the 'grep' command for file input.
+     * 'grep' outputs lines that contain the provided regular expressions.
+     * @param regexString regex to match
+     * @param filenames files for matching
+     * @param caseInsensitive makes matching case insensitive
+     * @param entireWord only match the exact whole word, no substrings
+     * @param nLinesAfter output extra n lines after
+     * @return list of lines that contain the regex
+     */
+    fun executeFileGrep(regexString: String, filenames: List<String>,
+                        caseInsensitive: Boolean = false, entireWord: Boolean = false,
+                        nLinesAfter: Int = 0): List<String> {
+        val result = mutableListOf<String>()
+
+        GrepCommand.setArguments(caseInsensitive, entireWord, nLinesAfter, Regex(regexString))
+        for (filename in filenames) {
+            val file = File(filename)
+            if (!file.exists()) {
+                throw IncorrectArgumentException("grep", filename, "No such file or directory")
+            } else if (file.isDirectory) {
+                throw IncorrectArgumentException("grep", filename, "Is a directory")
+            } else {
+                val fileResult = GrepCommand.execute(file.readLines())
+                if (filenames.size > 1) {
+                    fileResult.forEach { result.add("${file.name}:$it") }
+                } else {
+                    fileResult.forEach { result.add(it) }
+                }
+            }
+        }
+
+        return result
     }
 
     /**

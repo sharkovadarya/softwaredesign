@@ -1,10 +1,13 @@
 package ru.hse.spb.sd.sharkova.interpreter
 
+
+import com.beust.jcommander.Parameter
+import com.beust.jcommander.JCommander
 import java.util.regex.Pattern
 
 
 class CLIParser : Parser {
-    private val keywords = listOf("cat", "echo", "wc", "pwd", "exit")
+    private val keywords = listOf("cat", "echo", "wc", "pwd", "exit", "grep")
     private val identifierRegex = Regex("[_a-z][_a-z0-9]*")
     private val substitutionRegex = Regex("^\\$$identifierRegex")
     private val identifierAssignmentPattern = Pattern.compile("^$identifierRegex=")
@@ -187,6 +190,29 @@ class CLIParser : Parser {
         return nextCommandPosition
     }
 
+    private fun processGrep(arguments: List<String>, previousResult: List<String>): List<String> {
+        val args = GrepArguments()
+        val argsArray = arguments.toTypedArray()
+        JCommander.newBuilder().addObject(args).build().parse(*argsArray)
+        val result: List<String>
+
+        val caseInsensitive = args.caseInsensitive
+        val entireWord = args.entireWords
+        val nLinesAfter = args.nLinesAfter
+        if (args.parameters.isEmpty()) {
+            throw NoArgumentsException()
+        }
+        val regexString = args.parameters.first()
+        val filenames = args.parameters.drop(1)
+
+        result = if (filenames.isEmpty()) {
+            interpreter.executePipeGrep(regexString, previousResult, caseInsensitive, entireWord, nLinesAfter)
+        } else {
+            interpreter.executeFileGrep(regexString, filenames, caseInsensitive, entireWord, nLinesAfter)
+        }
+        return result
+    }
+
     private fun processKeyword(word: String,
                                arguments: List<String>,
                                previousResult: List<String>): List<String> {
@@ -207,6 +233,7 @@ class CLIParser : Parser {
                 }
                 "pwd" -> { interpreter.executePwd() }
                 "exit" -> { interpreter.executeExit() }
+                "grep" -> { processGrep(arguments, previousResult) }
                 else -> {emptyList()}
             }
         } catch (e: InterpreterException) {
@@ -277,5 +304,20 @@ class CLIParser : Parser {
                 lastIndex = end
             }
         }
+    }
+
+
+    private class GrepArguments {
+        @Parameter(names = ["-i"], description = "Case insensitive")
+        var caseInsensitive = false
+
+        @Parameter(names = ["-w"], description = "Match only entire words")
+        var entireWords = false
+
+        @Parameter(names = ["-A"], description = "Print n lines after match")
+        var nLinesAfter = 0
+
+        @Parameter(description = "File list", variableArity = true)
+        var parameters = mutableListOf<String>()
     }
 }
