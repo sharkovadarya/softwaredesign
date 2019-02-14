@@ -200,10 +200,14 @@ class CLIParser : Parser {
         val entireWord = args.entireWords
         val nLinesAfter = args.nLinesAfter
         if (args.parameters.isEmpty()) {
-            throw NoArgumentsException()
+            throw NotEnoughArgumentsException()
         }
         val regexString = args.parameters.first()
         val filenames = args.parameters.drop(1)
+
+        if (filenames.isEmpty() && previousResult.isEmpty()) {
+            throw NotEnoughArgumentsException("no file/text input provided")
+        }
 
         result = if (filenames.isEmpty()) {
             interpreter.executePipeGrep(regexString, previousResult, caseInsensitive, entireWord, nLinesAfter)

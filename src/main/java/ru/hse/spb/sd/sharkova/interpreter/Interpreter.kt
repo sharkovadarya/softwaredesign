@@ -128,69 +128,75 @@ class Interpreter {
     }
 
     private object GrepCommand : CLICommand {
+        private const val generalRegexTemplate = "(?s).*%s.*"
+        private const val caseInsensitiveRegexTemplate = "(?i)%s"
+        private const val wholeWordRegexTemplate = "\\b%s\\b"
+
         private var caseInsensitive = false
         private var entireWord = false
         private var nLinesAfter = 0
-        private lateinit var regex: Regex
+        private lateinit var regexString: String
 
-        private fun grep(regex: Regex, lines: List<String>): List<String> {
+        private fun grep(regexString: String, lines: List<String>): List<String> {
             val result = mutableListOf<String>()
-            val regexForUsage = if (caseInsensitive) Regex("(?i)(?s).*$regex.*")
-                                      else Regex("(?s).*$regex.*")
+            val regexForUsage = if (caseInsensitive) {
+                Regex(caseInsensitiveRegexTemplate.format(generalRegexTemplate.format(regexString)))
+            } else {
+                Regex(generalRegexTemplate.format(regexString))
+            }
             lines.forEach { if (regexForUsage.matches(it)) result.add(it) }
             return result
         }
 
-        private fun wholeWordGrep(regex: Regex, lines: List<String>): List<String> {
-            return grep(Regex("\\b$regex\\b"), lines)
+        private fun wholeWordGrep(regexString: String, lines: List<String>): List<String> {
+            return grep(wholeWordRegexTemplate.format(regexString), lines)
         }
 
-        private fun afterMatchGrep(regex: Regex, lines: List<String>): List<String> {
-            val result = mutableListOf<String>()
-            val regexForUsage = if (caseInsensitive) Regex("(?i)(?s).*$regex.*")
-            else Regex("(?s).*$regex.*")
-            var i = 0
-            while (i < lines.size) {
+        private fun afterMatchGrep(regexString: String, lines: List<String>): List<String> {
+            val resultingLines = LinkedHashSet<String>()
+            val newRegexString = generalRegexTemplate
+                    .format(if (entireWord) wholeWordRegexTemplate.format(regexString) else regexString)
+            val regexForUsage = if (caseInsensitive) Regex(caseInsensitiveRegexTemplate.format(newRegexString))
+                                      else Regex(newRegexString)
+            for (i in 0 until lines.size) {
                 if (regexForUsage.matches(lines[i])) {
-                    for (j in 0..nLinesAfter) {
-                        if (i >= lines.size) {
+                    resultingLines.add(lines[i])
+                    for (j in 1..nLinesAfter) {
+                        if (i + j >= lines.size) {
                             break
                         }
-                        result.add(lines[i++])
+                        resultingLines.add(lines[i + j])
                     }
-                } else {
-                    i++
                 }
             }
-            return result
+            return resultingLines.toList()
         }
 
         override fun execute(arguments: List<String>): List<String> {
             var result = emptyList<String>()
             try {
-                result = if (nLinesAfter > 0) {
-                    afterMatchGrep(regex, arguments)
+                if (nLinesAfter > 0) {
+                    result = afterMatchGrep(regexString, arguments)
                 } else {
-                    grep(regex, arguments)
-                }
-                if (entireWord) {
-                    result = wholeWordGrep(regex, result)
+                    result = grep(regexString, arguments)
+                    if (entireWord) {
+                        result = wholeWordGrep(regexString, result)
+                    }
                 }
 
             } catch (e: UninitializedPropertyAccessException) {}
 
-            clearArguments()
             return result
         }
 
-        fun setArguments(caseInsensitive: Boolean, entireWord: Boolean, nLinesAfter: Int, regex: Regex) {
+        fun setArguments(caseInsensitive: Boolean, entireWord: Boolean, nLinesAfter: Int, regexString: String) {
             this.caseInsensitive = caseInsensitive
             this.entireWord = entireWord
             this.nLinesAfter = nLinesAfter
-            this.regex = regex
+            this.regexString = regexString
         }
 
-        private fun clearArguments() {
+        fun clearArguments() {
             caseInsensitive = false
             entireWord = false
             nLinesAfter = 0
@@ -271,8 +277,10 @@ class Interpreter {
     fun executePipeGrep(regexString: String, lines: List<String>,
                         caseInsensitive: Boolean = false, entireWord: Boolean = false,
                         nLinesAfter: Int = 0): List<String> {
-        GrepCommand.setArguments(caseInsensitive, entireWord, nLinesAfter, Regex(regexString))
-        return GrepCommand.execute(lines)
+        GrepCommand.setArguments(caseInsensitive, entireWord, nLinesAfter, regexString)
+        val result = GrepCommand.execute(lines)
+        GrepCommand.clearArguments()
+        return result
     }
 
     /**
@@ -290,7 +298,7 @@ class Interpreter {
                         nLinesAfter: Int = 0): List<String> {
         val result = mutableListOf<String>()
 
-        GrepCommand.setArguments(caseInsensitive, entireWord, nLinesAfter, Regex(regexString))
+        GrepCommand.setArguments(caseInsensitive, entireWord, nLinesAfter, regexString)
         for (filename in filenames) {
             val file = File(filename)
             if (!file.exists()) {
@@ -306,6 +314,8 @@ class Interpreter {
                 }
             }
         }
+
+        GrepCommand.clearArguments()
 
         return result
     }
