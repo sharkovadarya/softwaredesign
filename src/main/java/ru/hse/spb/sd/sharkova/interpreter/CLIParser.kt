@@ -5,7 +5,11 @@ import com.beust.jcommander.Parameter
 import com.beust.jcommander.JCommander
 import java.util.regex.Pattern
 
-
+/**
+ * This class implements Parser interface for the following commands:
+ * echo, wc, cat, grep, pwd, exit; other commands are considered external.
+ * After the input has been parsed, the result of the last executed command is returned.
+ * */
 class CLIParser : Parser {
     private val keywords = listOf("cat", "echo", "wc", "pwd", "exit", "grep")
     private val identifierRegex = Regex("[_a-z][_a-z0-9]*")

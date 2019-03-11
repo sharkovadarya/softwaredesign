@@ -6,6 +6,11 @@ import java.io.InputStreamReader
 import java.lang.StringBuilder
 import java.nio.charset.Charset
 
+/**
+ * This class interprets and executes commands with arguments.
+ * Supported commands: echo, cat, wc, grep, pwd, exit;
+ * other commands are handled as external commands.
+ * */
 class Interpreter {
     private interface CLICommand {
         fun execute(arguments: List<String>): List<String>
