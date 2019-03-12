@@ -14,6 +14,7 @@ class CLIParser : Parser {
     private val keywords = listOf("cat", "echo", "wc", "pwd", "exit", "grep")
     private val identifierRegex = Regex("[_a-z][_a-z0-9]*")
     private val substitutionRegex = Regex("^\\$$identifierRegex")
+    private val substitutionPattern = Pattern.compile("\\$$identifierRegex")
     private val identifierAssignmentPattern = Pattern.compile("^$identifierRegex=")
 
     private val assignedVariables = HashMap<String, String>()
@@ -21,6 +22,24 @@ class CLIParser : Parser {
 
     private val interpreter = Interpreter()
 
+
+    private fun performSubstitution(word: String): String {
+        val result = StringBuilder()
+        var startingPosition = 0
+        var matcher = substitutionPattern.matcher(word)
+
+        while (matcher.find()) {
+            val substring = matcher.group()
+            result.append(word.substring(startingPosition, startingPosition + matcher.start()))
+            startingPosition += matcher.end()
+            result.append(getSubstitution(substring))
+            matcher = substitutionPattern.matcher(word.substring(startingPosition))
+        }
+
+        result.append(word.substring(startingPosition))
+
+        return result.toString()
+    }
 
     /**
      * This method accepts a line of input, breaks it into pipe-joined commands
@@ -35,28 +54,32 @@ class CLIParser : Parser {
         var list: List<String> = emptyList()
         while (pos < commands.size) {
             val command = commands[pos]
-            val str = extractQuotesFromCommand(command)
+            val str = extractQuotesFromEntireCommand(command)
             // if it was in quotes then it should be interpreted as a whole command
             val executeAsExternalCommand = str != command
 
             val words = splitStringIntoWords(str)
+            val wh = mutableListOf<String>()
+            words.forEach { wh.add(performSubstitution(extractQuotes(it))) }
+
 
             var nextPosition = if (!executeAsExternalCommand) extractVariableAssignments(words) else 0
             if (nextPosition >= words.size) {
                 pos++
                 continue
             }
-            val word = words[nextPosition++]
+            val word = performSubstitution(words[nextPosition++])
 
             val arguments = mutableListOf<String>()
             while (nextPosition < words.size) {
                 var arg = words[nextPosition++]
                 // if there are any quotes, all substitutions are performed inside quotes extraction
-                if (substitutionRegex.matches(arg)) {
-                    val variableName = arg.drop(1)
-                    arg = assignedVariables[variableName] ?: ""
+                arg = if (!checkQuotesAbsence(arg)) {
+                    extractQuotes(arg)
+                } else {
+                    performSubstitution(arg)
                 }
-                arg = extractQuotesFromArgument(arg)
+                // there should be no quotes remaining, thus the double check
                 if (!checkQuotesAbsence(arg)) {
                     throw MismatchedQuotesException()
                 }
@@ -80,18 +103,13 @@ class CLIParser : Parser {
         return result
     }
 
-
-    private fun substituteInString(string: String): String {
-        return string.replace(substitutionRegex) { getSubstitution(it.value)}
-    }
-
-    private fun extractQuotesFromCommand(string: String): String {
+    private fun extractQuotesFromEntireCommand(string: String): String {
         var str = string.trim()
         if (str.first() != '\"' && str.first() != '\'') {
             return str
         }
         if (str.first() == '\"' && str.last() == '\"') {
-            str = substituteInString(str)
+            str = performSubstitution(str)
         }
         var i = 0
         var j = str.lastIndex
@@ -111,7 +129,7 @@ class CLIParser : Parser {
         return str.substring(IntRange(i, j))
     }
 
-    private fun extractQuotesFromArgument(string: String): String {
+    private fun extractQuotes(string: String): String {
         var str = string.trim()
         var shouldPerformSubstitution = true
 
@@ -144,7 +162,7 @@ class CLIParser : Parser {
                 val extractedDoubleQuotesString = extractQuotes(str, '\"')
                 if (extractedDoubleQuotesString != null) {
                     val substr = if (shouldPerformSubstitution) {
-                        substituteInString(extractedDoubleQuotesString.second)
+                        performSubstitution(extractedDoubleQuotesString.second)
                     } else {
                         extractedDoubleQuotesString.second
                     }
@@ -176,7 +194,7 @@ class CLIParser : Parser {
                     }
                 }
 
-                var variableValue = extractQuotesFromArgument(assignedValue)
+                var variableValue = extractQuotes(assignedValue)
                 if (substitutionRegex.matches(variableValue)) {
                     variableValue = getSubstitution(variableValue)
                 }

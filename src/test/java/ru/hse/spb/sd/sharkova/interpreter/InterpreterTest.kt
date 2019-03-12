@@ -186,9 +186,42 @@ class InterpreterTest {
     }
 
     @Test
+    fun testSubstitutePwdTwoVariables() {
+        parser.parseInput("a=p")
+        parser.parseInput("b=wd")
+        val res1 = parser.parseInput("\$a\$b")
+        val res2 = parser.parseInput("p\$b")
+        val expected = "pwd".runCommand()
+        assertEquals(listOf(expected), res1)
+        assertEquals(listOf(expected), res2)
+    }
+
+    @Test
+    fun testSubstituteEchoWithSpaces() {
+        parser.parseInput("x=text")
+        val res = parser.parseInput("echo \"   \$x\"")
+        assertEquals(listOf("   text\n"), res)
+    }
+
+    @Test
+    fun testEchoWithVariousPostitionSubstitutions() {
+        parser.parseInput("x=tt")
+        parser.parseInput("y=echo")
+        val res = parser.parseInput("\$y text\$xтекст\$x")
+        assertEquals(listOf("textttтекстtt\n"), res)
+    }
+
+    @Test
     fun testNoIdentifierDollarSignEcho() {
         val res = parser.parseInput("echo \$не_идентификатор")
         assertEquals(listOf("\$не_идентификатор\n"), res)
+    }
+
+    @Test
+    fun testAssignedCommandName() {
+        parser.parseInput("x=echo")
+        val res = parser.parseInput("\$x text")
+        assertEquals(listOf("text\n"), res)
     }
 
     @Test
