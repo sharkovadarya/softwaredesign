@@ -1,4 +1,7 @@
 language: java
 jdk: oraclejdk8
 script: gradle test
-os: linux
+os:
+  - windows
+  - linux
+  - osx
