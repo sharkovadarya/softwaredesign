@@ -18,7 +18,7 @@ class Interpreter {
 
     private object EchoCommand : CLICommand {
         override fun execute(arguments: List<String>): List<String> {
-            return listOf(arguments.joinToString(" ") + "\n")
+            return listOf(arguments.joinToString(" ") + System.lineSeparator())
         }
     }
 
@@ -33,29 +33,12 @@ class Interpreter {
                 } else if (file.isDirectory) {
                     throw IncorrectArgumentException("cat", argument, "Is a directory")
                 } else {
-                    val reader = InputStreamReader(FileInputStream(file), Charset.defaultCharset())
-                    val stringBuilder = StringBuilder()
-                    val buffer = CharArray(500)
-                    var char = reader.read(buffer)
-                    while (char != -1) {
-                        var charList = buffer.toList().filter { it != '\u0000' }
-                        while (charList.isNotEmpty()) {
-                            val newlinePosition = charList.indexOf('\n')
-                            if (newlinePosition != -1) {
-                                stringBuilder.append(charList.take(newlinePosition + 1).joinToString(""))
-                                result.add(stringBuilder.toString())
-                                stringBuilder.setLength(0)
-                                charList = charList.drop(newlinePosition + 1)
-                            } else {
-                                stringBuilder.append(charList.joinToString(""))
-                                break
-                            }
-                        }
-                        buffer.fill('\u0000')
-                        char = reader.read(buffer)
-                    }
-                    if (stringBuilder.isNotEmpty()) {
-                        result.add(stringBuilder.toString())
+                    val fileLines = file.readText(Charset.defaultCharset())
+                            .split(Regex("(?<=${System.lineSeparator()})"))
+                    if (fileLines.last().isEmpty()) {
+                        result.addAll(fileLines.dropLast(1))
+                    } else {
+                        result.addAll(fileLines)
                     }
                 }
             }
@@ -73,7 +56,7 @@ class Interpreter {
     private object WcPipeCommand : WcCommand() {
         private fun calculateWc(args: List<String>): Triple<Long, Long, Long> {
             var lineCount: Long = 0
-            args.forEach { lineCount += it.chars().filter{ ch -> ch.toChar() == '\n' }.count() }
+            args.forEach { lineCount += it.split(System.lineSeparator()).size - 1 }
             val wordCount = args.stream().flatMap { it.split(Regex("\\s"))
                     .filter { word -> word.isNotEmpty() }.stream() }.count()
             var byteCount: Long = 0
@@ -82,7 +65,7 @@ class Interpreter {
         }
 
         override fun execute(arguments: List<String>): List<String> {
-            return listOf(tripleToString(calculateWc(arguments)) + "\n")
+            return listOf(tripleToString(calculateWc(arguments)) + System.lineSeparator())
         }
     }
 
@@ -97,8 +80,16 @@ class Interpreter {
             val fileInputStream = FileInputStream(file)
             while (fileInputStream.available() > 0) {
                 val char = fileInputStream.read().toChar()
+                // I can't use System.lineSeparator() because "\r\n" takes two characters;
+                // I can't use File.readText() and split by System.lineSeparator()
+                // because I can't read huge files into a single string.
                 if (char == '\n') {
                     lineCount += 1
+                } else if (char == '\r') {
+                    val nextChar = fileInputStream.read().toChar()
+                    if (nextChar == '\n') {
+                        lineCount += 1
+                    }
                 }
             }
             return Triple(lineCount, wordCount, byteCount)
