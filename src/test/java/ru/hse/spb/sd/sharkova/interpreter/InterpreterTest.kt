@@ -181,13 +181,15 @@ class InterpreterTest {
 
     @Test
     fun testSubstituteFilenameCat() {
-        val res = parser.parseInput("x=src/test/resources/file1.txt | cat \$x")
+        parser.parseInput("x=src/test/resources/file1.txt")
+        val res = parser.parseInput("cat \$x")
         assertEquals(file1Lines, res)
     }
 
     @Test
     fun testSubstitutePwd() {
-        val res = parser.parseInput("x=pwd \$x")
+        parser.parseInput("x=pwd")
+        val res = parser.parseInput("\$x")
         val expected = "pwd".runCommand()
         assertEquals(listOf(expected), res)
     }
@@ -238,14 +240,15 @@ class InterpreterTest {
     }
 
     @Test
+    fun testEchoWithQuotesAndPipeSymbolInside() {
+        val res = parser.parseInput("echo \" \' | \"")
+        assertEquals(listOf(stringWithNewline(" \' | ")), res)
+    }
+
+    @Test
     fun testMultipleDoubleQuotesEcho() {
         val res = parser.parseInput("echo \"\"text with spaces\"\" and more \"and even more\"")
         assertEquals(listOf(stringWithNewline("text with spaces and more and even more")), res)
-    }
-
-    @Test (expected = MismatchedQuotesException::class)
-    fun testMismatchedDoubleQuotesEcho() {
-        parser.parseInput("echo \"\"x\"")
     }
 
     @Test
