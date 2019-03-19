@@ -1,17 +1,21 @@
 package ru.hse.spb.sd.sharkova.interpreter.commands
 
 import ru.hse.spb.sd.sharkova.interpreter.IncorrectArgumentException
+import ru.hse.spb.sd.sharkova.interpreter.stream.ErrorStream
+import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
+import ru.hse.spb.sd.sharkova.interpreter.stream.OutputStream
 import java.io.File
 import java.io.FileInputStream
 
-abstract class WcCommand : Command {
-    protected fun <T, K, V> tripleToString(triple: Triple<T, K, V>): String {
+class WcCommand(arguments: List<String>,
+                         inputStream: InputStream,
+                         outputStream: OutputStream,
+                         errorStream: ErrorStream) : Command(arguments, inputStream, outputStream, errorStream) {
+    private fun <T, K, V> tripleToString(triple: Triple<T, K, V>): String {
         return "${triple.first} ${triple.second} ${triple.third}"
     }
-}
 
-object WcPipeCommand : WcCommand() {
-    private fun calculateWc(args: List<String>): Triple<Long, Long, Long> {
+    private fun calculatePipeWc(args: List<String>): Triple<Long, Long, Long> {
         var lineCount: Long = 0
         args.forEach { lineCount += it.split(System.lineSeparator()).size - 1 }
         val wordCount = args.stream().flatMap { it.split(Regex("\\s"))
@@ -21,13 +25,7 @@ object WcPipeCommand : WcCommand() {
         return Triple(lineCount, wordCount, byteCount)
     }
 
-    override fun execute(arguments: List<String>): List<String> {
-        return listOf(tripleToString(calculateWc(arguments)) + System.lineSeparator())
-    }
-}
-
-object WcFileCommand : WcCommand() {
-    private fun calculateWc(file: File): Triple<Long, Long, Long> {
+    private fun calculateFileWc(file: File): Triple<Long, Long, Long> {
         val byteCount = file.length()
         var lineCount: Long = 0
         var wordCount: Long = 0
@@ -52,21 +50,26 @@ object WcFileCommand : WcCommand() {
         return Triple(lineCount, wordCount, byteCount)
     }
 
-    override fun execute(arguments: List<String>): List<String> {
+    private fun executePipeWc(lines: List<String>) =
+            outputStream.writeLine(tripleToString(calculatePipeWc(lines)) + System.lineSeparator())
+
+    private fun executeFileWc(filenames: List<String>) {
         var totalLineCount: Long = 0
         var totalWordCount: Long = 0
         var totalByteCount: Long = 0
 
 
         val res = mutableListOf<String>()
-        for (argument in arguments) {
+        for (argument in filenames) {
             val file = File(argument)
             if (!file.exists()) {
-                throw IncorrectArgumentException("wc", argument, "No such file or directory")
+                writeError("wc", argument, "No such file or directory")
+                //throw IncorrectArgumentException("wc", argument, "No such file or directory")
             } else if (file.isDirectory) {
-                throw IncorrectArgumentException("wc", argument, "Is a directory")
+                writeError("wc", argument, "Is a directory")
+                //throw IncorrectArgumentException("wc", argument, "Is a directory")
             } else {
-                val fileWc = calculateWc(file)
+                val fileWc = calculateFileWc(file)
                 totalLineCount += fileWc.first
                 totalWordCount += fileWc.second
                 totalByteCount += fileWc.third
@@ -76,7 +79,15 @@ object WcFileCommand : WcCommand() {
         if (res.size > 1) {
             res.add(tripleToString(Triple(totalLineCount, totalWordCount, totalByteCount)) + " total\n")
         }
-        return res
+
+        outputStream.writeLines(res)
+    }
+
+    override fun execute() {
+        if (arguments.isEmpty()) {
+            executePipeWc(inputStream.readLines())
+        } else {
+            executeFileWc(arguments)
+        }
     }
 }
-

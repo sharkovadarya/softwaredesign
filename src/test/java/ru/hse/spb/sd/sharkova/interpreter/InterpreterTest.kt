@@ -71,8 +71,7 @@ class InterpreterTest {
     @Test
     fun testPwd() {
         val res = parser.parseInput("pwd")
-        val expected = "pwd".runCommand()
-        assertEquals(listOf(expected), res)
+        assertEquals("pwd".runCommand(), res)
     }
 
     // run this one separately because it literally exits
@@ -190,8 +189,7 @@ class InterpreterTest {
     fun testSubstitutePwd() {
         parser.parseInput("x=pwd")
         val res = parser.parseInput("\$x")
-        val expected = "pwd".runCommand()
-        assertEquals(listOf(expected), res)
+        assertEquals("pwd".runCommand(), res)
     }
 
     @Test
@@ -201,8 +199,8 @@ class InterpreterTest {
         val res1 = parser.parseInput("\$a\$b")
         val res2 = parser.parseInput("p\$b")
         val expected = "pwd".runCommand()
-        assertEquals(listOf(expected), res1)
-        assertEquals(listOf(expected), res2)
+        assertEquals(expected, res1)
+        assertEquals(expected, res2)
     }
 
     @Test
@@ -392,11 +390,6 @@ class InterpreterTest {
         assertEquals(res2, res3)
     }
 
-    @Test(expected = NotEnoughArgumentsException::class)
-    fun testGrepNoRegexProvided() {
-        parser.parseInput("grep src/test/resources/grep1.txt")
-    }
-
     @Test
     fun testDoubleGrep() {
         val res = parser.parseInput("grep -i word src/test/resources/grep1.txt | grep this")
@@ -409,22 +402,35 @@ class InterpreterTest {
         assertEquals(listOf("grep: grep1.txt: No such file or directory"), res)
     }
 
+    // run these on systems where 'ls' command is present
+    /*@Test
+    fun testExternalCommand() {
+        val res = parser.parseInput("ls src")
+        assertEquals("ls src".runCommand().sorted(), res.sorted())
+    }
+
+    @Test
+    fun testExternalCommandErrorOutput() {
+        val res = parser.parseInput("ls srd")
+        assertEquals("ls srd".runCommand().sorted(), res.sorted())
+    }*/
+
 
     // method taken from: https://stackoverflow.com/a/41495542/7735110
-    private fun String.runCommand(): String {
+    private fun String.runCommand(): List<String> {
         try {
             val parts = this.split("\\s".toRegex())
             val process = ProcessBuilder(*parts.toTypedArray())
                     .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                    .redirectError(ProcessBuilder.Redirect.PIPE)
+                    .redirectErrorStream(true)
                     .start()
-            return process.inputStream.bufferedReader().readLine()
+            return process.inputStream.bufferedReader().readLines()
         } catch (e: IOException) {
             e.printStackTrace()
             fail()
         }
 
-        return ""
+        return emptyList()
     }
 
     private fun stringWithNewline(string: String) = string + System.lineSeparator()

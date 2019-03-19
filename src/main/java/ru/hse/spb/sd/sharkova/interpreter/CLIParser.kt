@@ -3,7 +3,89 @@ package ru.hse.spb.sd.sharkova.interpreter
 
 import com.beust.jcommander.Parameter
 import com.beust.jcommander.JCommander
+import ru.hse.spb.sd.sharkova.interpreter.stream.ErrorStream
+import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
+import ru.hse.spb.sd.sharkova.interpreter.stream.OutputStream
 import java.util.regex.Pattern
+
+class ValuesStorage {
+    private val assignedVariables = HashMap<String, String>()
+
+    fun getValue(variable: String): String = assignedVariables[variable] ?: ""
+
+    fun storeValue(variableName: String, variableValue: String) {
+        assignedVariables[variableName] = variableValue
+    }
+}
+
+class CommandProcessor(private val interpreter: Interpreter,
+                       private val outputStream: OutputStream,
+                       private val errorStream: ErrorStream) {
+    private val keywords = listOf("cat", "echo", "wc", "pwd", "exit", "grep")
+
+    private fun processGrep(arguments: List<String>, inputStream: InputStream) {
+        val args = GrepArguments()
+        val argsArray = arguments.toTypedArray()
+        JCommander.newBuilder().addObject(args).build().parse(*argsArray)
+
+        val caseInsensitive = args.caseInsensitive
+        val entireWord = args.entireWords
+        val nLinesAfter = args.nLinesAfter
+        if (args.parameters.isEmpty()) {
+            throw NotEnoughArgumentsException()
+        }
+        val regexString = args.parameters.first()
+        val filenames = args.parameters.drop(1)
+
+        interpreter.executeGrep(regexString, filenames, caseInsensitive, entireWord, nLinesAfter,
+                inputStream, outputStream, errorStream)
+    }
+
+    private fun processKeyword(word: String,
+                       arguments: List<String>,
+                       inputStream: InputStream) {
+
+        when (word) {
+            "cat" -> interpreter.executeCat(arguments, inputStream, outputStream, errorStream)
+            "echo" -> interpreter.executeEcho(arguments, inputStream, outputStream, errorStream)
+            "wc" -> interpreter.executeWc(arguments, inputStream, outputStream, errorStream)
+            "pwd" -> interpreter.executePwd(inputStream, outputStream, errorStream)
+            "exit" -> interpreter.executeExit(inputStream, outputStream, errorStream)
+            "grep" -> processGrep(arguments, inputStream)
+
+        }
+    }
+
+    private fun processExternalCommand(commandName: String, arguments: List<String>, inputStream: InputStream) {
+        val externalCommand = mutableListOf(commandName)
+        externalCommand.addAll(arguments)
+        interpreter.executeExternalCommand(externalCommand, inputStream, outputStream, errorStream)
+    }
+
+    fun processCommand(commandName: String, arguments: List<String>, inputStream: InputStream) {
+        if (!keywords.contains(commandName)) {
+            processExternalCommand(commandName, arguments, inputStream)
+        } else {
+            processKeyword(commandName, arguments, inputStream)
+        }
+    }
+
+    private class GrepArguments {
+        @Parameter(names = ["-i"], description = "Case insensitive")
+        var caseInsensitive = false
+
+        @Parameter(names = ["-w"], description = "Match only entire words")
+        var entireWords = false
+
+        @Parameter(names = ["-A"], description = "Print n lines after match")
+        var nLinesAfter = 0
+
+        @Parameter(description = "File list", variableArity = true)
+        var parameters = mutableListOf<String>()
+    }
+}
+
+class CLIStringProcessor {}
 
 /**
  * This class implements Parser interface for the following commands:
@@ -11,18 +93,45 @@ import java.util.regex.Pattern
  * After the input has been parsed, the result of the last executed command is returned.
  * */
 class CLIParser : Parser {
-    private val keywords = listOf("cat", "echo", "wc", "pwd", "exit", "grep")
     private val identifierRegex = Regex("[_a-z][_a-z0-9]*")
     private val substitutionRegex = Regex("^\\$$identifierRegex")
-    private val substitutionPattern = Pattern.compile("\\$$identifierRegex")
+    private val substitutionPattern = Pattern.compile(substitutionRegex.pattern)
     private val identifierAssignmentPattern = Pattern.compile("^$identifierRegex=")
     private val quotesPattern = """(["]+[^"]+?["]+)|([']+[^']+?[']+)"""
+    private val quotesRegex = Regex(quotesPattern)
 
-    private val assignedVariables = HashMap<String, String>()
-    private val errorList = mutableListOf<String>()
+    private val valuesStorage = ValuesStorage()
+    private val outputStream = OutputStream()
+    private val errorStream = ErrorStream()
+    private val commandProcessor = CommandProcessor(Interpreter(), outputStream, errorStream)
 
-    private val interpreter = Interpreter()
+    override fun parseInput(input: String): List<String> {
+        val words1 = splitStringIntoWords(input)
+        val words = mutableListOf<String>()
+        words1.forEach {
+            if (it.matches(quotesRegex))
+                words.add(it)
+            else
+                words.addAll(it.split(Regex("((?<=\\|)|(?=\\|))")).filter { str -> str.isNotEmpty() })
+        }
 
+        var commandNamePos = 0
+        while (commandNamePos < words.size) {
+            val command = readCommand(words, commandNamePos)
+            if (command.first == null) {
+                commandNamePos = command.third
+            }
+            val commandName = command.first ?: continue
+            val arguments = command.second
+            commandNamePos = command.third
+
+            val inputStream = outputStream.toInputStream()
+
+            parseCommand(commandName, arguments, inputStream)
+        }
+
+        return outputStream.getLines() + errorStream.getLines()
+    }
 
     private fun performSubstitution(word: String): String {
         val result = StringBuilder()
@@ -42,59 +151,48 @@ class CLIParser : Parser {
         return result.toString()
     }
 
-    override fun parseInput(input: String): List<String> {
-        val words1 = splitStringIntoWords(input)
-        val words = mutableListOf<String>()
-        words1.forEach {
-            if (it.matches(Regex(quotesPattern)))
-                words.add(it)
-            else
-                words.addAll(it.split(Regex("((?<=\\|)|(?=\\|))")).filter { str -> str.isNotEmpty() })
-        }
+    private fun parseVariableAssignment(command: String, words: List<String>, position: Int): Int {
 
-        var commandNamePos = 0
-        var result = emptyList<String>()
-        while (commandNamePos < words.size) {
-            val commandName = performSubstitution(words[commandNamePos++])
-
-            val assignmentMatcher = identifierAssignmentPattern.matcher(commandName)
-            if (assignmentMatcher.find()) {
-                val variableName = assignmentMatcher.group().dropLast(1)
-                // the assigned value is inside the quotes
-                // so it became the next word after the splitting
-                val assignedValue = if (commandName.last() == identifierAssignmentPattern.pattern().last()) {
-                    if (commandNamePos < words.size) {
-                        words[commandNamePos]
-                    } else {
-                        // TODO handle this
-                        throw Exception()
-                    }
+        val assignmentMatcher = identifierAssignmentPattern.matcher(command)
+        if (assignmentMatcher.find()) {
+            val variableName = assignmentMatcher.group().dropLast(1)
+            val assignedValue = if (command.last() == identifierAssignmentPattern.pattern().last()) {
+                if (position < words.size) {
+                    words[position]
                 } else {
-                    commandName.substring(assignmentMatcher.group().length)
+                    ""
                 }
-
-                storeVariableAssignment(variableName, assignedValue)
-                commandNamePos++
-                continue
+            } else {
+                command.substring(assignmentMatcher.group().length)
             }
 
-            val args = mutableListOf<String>()
-            while (commandNamePos < words.size &&
-                    (words[commandNamePos].matches(Regex(quotesPattern)) || !words[commandNamePos].contains("|"))) {
-                args.add(processArgument(words[commandNamePos]))
-                commandNamePos++
-            }
-            commandNamePos++
-            result =
-                    if (commandName.matches(Regex(quotesPattern)))
-                        processExternalCommand(commandName, args)
-                    else
-                        parseCommand(commandName, args, result)
+            storeVariableAssignment(variableName, assignedValue)
+            return position + 1
         }
 
+        return position
+    }
 
-        return result
+    private fun readCommand(words: List<String>, commandNamePosition: Int): Triple<String?, List<String>, Int> {
+        var commandNamePos = commandNamePosition
 
+        val commandName = performSubstitution(words[commandNamePos++])
+
+        val newPosition = parseVariableAssignment(commandName, words, commandNamePos)
+        if (newPosition > commandNamePos) {
+            commandNamePos = newPosition
+            return Triple(null, emptyList(), commandNamePos)
+        }
+
+        val args = mutableListOf<String>()
+        while (commandNamePos < words.size &&
+                (words[commandNamePos].matches(quotesRegex) || !words[commandNamePos].contains("|"))) {
+            args.add(processArgument(words[commandNamePos]))
+            commandNamePos++
+        }
+        commandNamePos++
+
+        return Triple(commandName, args, commandNamePos)
     }
 
     private fun processArgument(arg: String): String {
@@ -103,88 +201,6 @@ class CLIParser : Parser {
         } else {
             performSubstitution(arg)
         }
-    }
-
-    /*override fun parseInput(input: String): List<String> {
-        val commands = input.split(Regex("[\\s]*\\|[\\s]*")).filter { it.isNotEmpty() }
-
-        var pos = 0
-        var list: List<String> = emptyList()
-        while (pos < commands.size) {
-            val command = commands[pos]
-            val str = extractQuotesFromEntireCommand(command)
-            // if it was in quotes then it should be interpreted as a whole command
-            val executeAsExternalCommand = str != command
-
-            val words = splitStringIntoWords(str)
-            val wh = mutableListOf<String>()
-            words.forEach { wh.add(performSubstitution(extractQuotes(it))) }
-
-
-            var nextPosition = if (!executeAsExternalCommand) extractVariableAssignments(words) else 0
-            if (nextPosition >= words.size) {
-                pos++
-                continue
-            }
-            val word = performSubstitution(words[nextPosition++])
-
-            val arguments = mutableListOf<String>()
-            while (nextPosition < words.size) {
-                var arg = words[nextPosition++]
-                // if there are any quotes, all substitutions are performed inside quotes extraction
-                arg = if (!checkQuotesAbsence(arg)) {
-                    extractQuotes(arg)
-                } else {
-                    performSubstitution(arg)
-                }
-                // there should be no quotes remaining, thus the double check
-                if (!checkQuotesAbsence(arg)) {
-                    throw MismatchedQuotesException()
-                }
-                arguments.add(arg)
-            }
-
-            if (executeAsExternalCommand) {
-                processExternalCommand(word, arguments)
-                pos++
-                continue
-            }
-
-            list = parseCommand(word, arguments, list)
-            pos++
-        }
-
-
-        val result = mutableListOf<String>()
-        result.addAll(list)
-        result.addAll(errorList)
-        return result
-    }*/
-
-    private fun extractQuotesFromEntireCommand(string: String): String {
-        var str = string.trim()
-        if (str.first() != '\"' && str.first() != '\'') {
-            return str
-        }
-        if (str.first() == '\"' && str.last() == '\"') {
-            str = performSubstitution(str)
-        }
-        var i = 0
-        var j = str.lastIndex
-        while (i <= j) {
-            while (str[i] == '\"' && str[j] == '\"') {
-                i++
-                j--
-            }
-            while (str[i] == '\'' && str[j] == '\"') {
-                i++
-                j--
-            }
-            if (!(str[i] == '\"' && str[j] == '\"' || str[i] == '\'' && str[j] == '\'')) {
-                break
-            }
-        }
-        return str.substring(IntRange(i, j))
     }
 
     private fun extractQuotes(string: String): String {
@@ -235,7 +251,8 @@ class CLIParser : Parser {
         return str
     }
 
-    private fun getSubstitution(variable: String): String = assignedVariables[variable.drop(1)] ?: ""
+    private fun getSubstitution(variableWithAssignment: String): String =
+            valuesStorage.getValue(variableWithAssignment.drop(1))
 
 
     private fun storeVariableAssignment(variableName: String, assignedValue: String) {
@@ -243,124 +260,16 @@ class CLIParser : Parser {
         if (substitutionRegex.matches(variableValue)) {
             variableValue = getSubstitution(variableValue)
         }
-        assignedVariables[variableName] = variableValue
+        valuesStorage.storeValue(variableName, variableValue)
     }
 
-    private fun extractVariableAssignments(words: List<String>): Int {
-        var nextCommandPosition = 0
-        var i = 0
-        while (i < words.size) {
-            val identifierAssignmentMatcher = identifierAssignmentPattern.matcher(words[i])
-            if (identifierAssignmentMatcher.find()) {
-                val variableName = identifierAssignmentMatcher.group().dropLast(1) // delete the '='
-                var assignedValue = words[i].substring(variableName.length + 1)
-                if (assignedValue.isEmpty()) {
-                    i++
-                    if (i < words.size && (words[i].first() == '\"' || words[i].first() == '\'')) {
-                        assignedValue = words[i]
-                    }
-                }
-
-                var variableValue = extractQuotes(assignedValue)
-                if (substitutionRegex.matches(variableValue)) {
-                    variableValue = getSubstitution(variableValue)
-                }
-                assignedVariables[variableName] = variableValue
-
-                nextCommandPosition = i + 1
-            } else {
-                nextCommandPosition = i
-                break
-            }
-
-            i++
-        }
-
-        return nextCommandPosition
-    }
-
-    private fun processGrep(arguments: List<String>, previousResult: List<String>): List<String> {
-        val args = GrepArguments()
-        val argsArray = arguments.toTypedArray()
-        JCommander.newBuilder().addObject(args).build().parse(*argsArray)
-        val result: List<String>
-
-        val caseInsensitive = args.caseInsensitive
-        val entireWord = args.entireWords
-        val nLinesAfter = args.nLinesAfter
-        if (args.parameters.isEmpty()) {
-            throw NotEnoughArgumentsException()
-        }
-        val regexString = args.parameters.first()
-        val filenames = args.parameters.drop(1)
-
-        if (filenames.isEmpty() && previousResult.isEmpty()) {
-            throw NotEnoughArgumentsException("no file/text input provided")
-        }
-
-        result = if (filenames.isEmpty()) {
-            interpreter.executePipeGrep(regexString, previousResult, caseInsensitive, entireWord, nLinesAfter)
+    private fun parseCommand(word: String, arguments: List<String>, inputStream: InputStream = InputStream.emptyStream()) {
+        if (substitutionRegex.matches(word)) {
+            val substitution = getSubstitution(word)
+            parseCommand(substitution, arguments, inputStream)
         } else {
-            interpreter.executeFileGrep(regexString, filenames, caseInsensitive, entireWord, nLinesAfter)
+            commandProcessor.processCommand(word, arguments, inputStream)
         }
-        return result
-    }
-
-    private fun processKeyword(word: String,
-                               arguments: List<String>,
-                               previousResult: List<String>): List<String> {
-        return try {
-            when (word) {
-                "cat" -> { if (arguments.isEmpty()) previousResult else interpreter.executeCat(arguments) }
-                "echo" -> { interpreter.executeEcho(arguments) }
-                "wc" -> {
-                    if (arguments.isEmpty() && previousResult.isEmpty()) {
-                        listOf("wc: No arguments provided")
-                    } else {
-                        if (arguments.isNotEmpty()) {
-                            interpreter.executeFileWc(arguments)
-                        } else {
-                            interpreter.executePipeWc(previousResult)
-                        }
-                    }
-                }
-                "pwd" -> { interpreter.executePwd() }
-                "exit" -> { interpreter.executeExit() }
-                "grep" -> { processGrep(arguments, previousResult) }
-                else -> {emptyList()}
-            }
-        } catch (e: InterpreterException) {
-            val errorMessage = e.message
-            if (errorMessage != null) {
-                errorList.add(errorMessage)
-            }
-            emptyList()
-        }
-    }
-
-    private fun processExternalCommand(commandName: String, arguments: List<String>): List<String> {
-        val externalCommand = mutableListOf(commandName)
-        externalCommand.addAll(arguments)
-        interpreter.executeExternalCommand(externalCommand)
-        // TODO return command output
-        return emptyList()
-    }
-
-    private fun parseCommand(word: String, arguments: List<String>, previousResult: List<String>): List<String> {
-        var res = listOf<String>()
-
-        if (!keywords.contains(word)) {
-            if (substitutionRegex.matches(word)) {
-                val substitution = getSubstitution(word)
-                res = parseCommand(substitution, emptyList(), previousResult)
-            } else {
-                processExternalCommand(word, arguments)
-            }
-        } else {
-            res = processKeyword(word, arguments, previousResult)
-        }
-
-        return res
     }
 
     private fun splitStringIntoWords(str: String): List<String> {
@@ -399,20 +308,5 @@ class CLIParser : Parser {
                 lastIndex = end
             }
         }
-    }
-
-
-    private class GrepArguments {
-        @Parameter(names = ["-i"], description = "Case insensitive")
-        var caseInsensitive = false
-
-        @Parameter(names = ["-w"], description = "Match only entire words")
-        var entireWords = false
-
-        @Parameter(names = ["-A"], description = "Print n lines after match")
-        var nLinesAfter = 0
-
-        @Parameter(description = "File list", variableArity = true)
-        var parameters = mutableListOf<String>()
     }
 }
