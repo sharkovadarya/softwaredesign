@@ -1,16 +1,18 @@
 package ru.hse.spb.sd.sharkova.interpreter.commands
 
-import ru.hse.spb.sd.sharkova.interpreter.IncorrectArgumentException
-import ru.hse.spb.sd.sharkova.interpreter.stream.ErrorStream
-import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
-import ru.hse.spb.sd.sharkova.interpreter.stream.OutputStream
+import ru.hse.spb.sd.sharkova.interpreter.stream.*
 import java.io.File
 import java.io.FileInputStream
 
-class WcCommand(arguments: List<String>,
-                         inputStream: InputStream,
-                         outputStream: OutputStream,
-                         errorStream: ErrorStream) : Command(arguments, inputStream, outputStream, errorStream) {
+/**
+ * This class represents the 'wc' command
+ * which outputs the line, byte and word count of its input
+ * received via file or pipe.
+ */
+class WcCommand(filenames: List<String>,
+                inputStream: InputStream,
+                outputStream: OutputStream,
+                errorStream: ErrorStream) : Command(filenames, inputStream, outputStream, errorStream) {
     private fun <T, K, V> tripleToString(triple: Triple<T, K, V>): String {
         return "${triple.first} ${triple.second} ${triple.third}"
     }
@@ -51,7 +53,7 @@ class WcCommand(arguments: List<String>,
     }
 
     private fun executePipeWc(lines: List<String>) =
-            outputStream.writeLine(tripleToString(calculatePipeWc(lines)) + System.lineSeparator())
+            writeLine(tripleToString(calculatePipeWc(lines)) + System.lineSeparator())
 
     private fun executeFileWc(filenames: List<String>) {
         var totalLineCount: Long = 0
@@ -64,23 +66,22 @@ class WcCommand(arguments: List<String>,
             val file = File(argument)
             if (!file.exists()) {
                 writeError("wc", argument, "No such file or directory")
-                //throw IncorrectArgumentException("wc", argument, "No such file or directory")
             } else if (file.isDirectory) {
                 writeError("wc", argument, "Is a directory")
-                //throw IncorrectArgumentException("wc", argument, "Is a directory")
             } else {
                 val fileWc = calculateFileWc(file)
                 totalLineCount += fileWc.first
                 totalWordCount += fileWc.second
                 totalByteCount += fileWc.third
-                res.add(tripleToString(fileWc) + " ${file.name}\n")
+                res.add(tripleToString(fileWc) + " ${file.name}${System.lineSeparator()}")
             }
         }
         if (res.size > 1) {
-            res.add(tripleToString(Triple(totalLineCount, totalWordCount, totalByteCount)) + " total\n")
+            res.add(tripleToString(Triple(totalLineCount, totalWordCount, totalByteCount)) +
+                    " total${System.lineSeparator()}")
         }
 
-        outputStream.writeLines(res)
+        writeLines(res)
     }
 
     override fun execute() {

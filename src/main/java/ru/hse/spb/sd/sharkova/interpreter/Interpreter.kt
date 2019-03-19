@@ -2,7 +2,6 @@ package ru.hse.spb.sd.sharkova.interpreter
 
 import ru.hse.spb.sd.sharkova.interpreter.commands.*
 import ru.hse.spb.sd.sharkova.interpreter.stream.*
-import java.io.File
 
 /**
  * This class interprets and executes commands with arguments.
@@ -33,13 +32,16 @@ class Interpreter {
                    errorStream: ErrorStream) =
             CatCommand(filenames, inputStream, outputStream, errorStream).execute()
 
-    // TODO javadoc
-    /***/
-    fun executeWc(args: List<String>,
+    /**
+     * This method executes the 'wc' command,
+     * which output the line, word and byte count for input (file or previous command result)
+     * @param filenames list of files
+     */
+    fun executeWc(filenames: List<String>,
                   inputStream: InputStream,
                   outputStream: OutputStream,
                   errorStream: ErrorStream) {
-        WcCommand(args, inputStream, outputStream, errorStream).execute()
+        WcCommand(filenames, inputStream, outputStream, errorStream).execute()
     }
 
     /**
@@ -73,7 +75,7 @@ class Interpreter {
     fun executePwd(inputStream: InputStream,
                    outputStream: OutputStream,
                    errorStream: ErrorStream) =
-            PwdCommand(emptyList(), inputStream, outputStream, errorStream).execute()
+            PwdCommand(inputStream, outputStream, errorStream).execute()
 
     /**
      * This method executed the 'exit' command,
@@ -82,7 +84,7 @@ class Interpreter {
     fun executeExit(inputStream: InputStream,
                     outputStream: OutputStream,
                     errorStream: ErrorStream) =
-            ExitCommand(emptyList(), inputStream, outputStream, errorStream).execute()
+            ExitCommand(inputStream, outputStream, errorStream).execute()
 
     /**
      * This method executes a command which isn't among the commands listed above.

@@ -1,19 +1,25 @@
 package ru.hse.spb.sd.sharkova.interpreter.commands
 
-import ru.hse.spb.sd.sharkova.interpreter.IncorrectArgumentException
-import ru.hse.spb.sd.sharkova.interpreter.stream.ErrorStream
-import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
-import ru.hse.spb.sd.sharkova.interpreter.stream.OutputStream
+import ru.hse.spb.sd.sharkova.interpreter.stream.*
 import java.io.File
 
-class GrepCommand(arguments: List<String>,
+/**
+ * This class represents the 'grep' command
+ * which outputs the lines that match the provided regex.
+ * @param filenames list of files from which matching lines will be displayed
+ * @param regexString regex to match against
+ * @param caseInsensitive set 'true' for case insensitive match
+ * @param entireWord set 'true' to match entire words only
+ * @param nLinesAfter display n lines after match *
+ */
+class GrepCommand(filenames: List<String>,
                   inputStream: InputStream,
                   outputStream: OutputStream,
                   errorStream: ErrorStream,
                   private var regexString: String,
                   private val caseInsensitive: Boolean = false,
                   private val entireWord: Boolean = false,
-                  private val nLinesAfter: Int = 0) : Command(arguments, inputStream, outputStream, errorStream) {
+                  private val nLinesAfter: Int = 0) : Command(filenames, inputStream, outputStream, errorStream) {
     private val generalRegexTemplate = "(?s).*%s.*"
     private val caseInsensitiveRegexTemplate = "(?i)%s"
     private val wholeWordRegexTemplate = "\\b%s\\b"
@@ -54,19 +60,7 @@ class GrepCommand(arguments: List<String>,
     }
 
     private fun executeGrep(lines: List<String>) {
-        try {
-            if (nLinesAfter > 0) {
-                outputStream.writeLines(afterMatchGrep(regexString, lines))
-            } else {
-                var result: List<String>
-                result = grep(regexString, lines)
-                if (entireWord) {
-                    result = wholeWordGrep(regexString, result)
-                }
-                outputStream.writeLines(result)
-            }
-
-        } catch (e: UninitializedPropertyAccessException) {}
+        writeLines(afterMatchGrep(regexString, lines))
     }
 
     private fun executeFileGrep(filenames: List<String>) {
@@ -76,10 +70,8 @@ class GrepCommand(arguments: List<String>,
             val file = File(filename)
             if (!file.exists()) {
                 writeError("grep", filename, "No such file or directory")
-                //throw IncorrectArgumentException("grep", filename, "No such file or directory")
             } else if (file.isDirectory) {
                 writeError("grep", filename, "Is a directory")
-                //throw IncorrectArgumentException("grep", filename, "Is a directory")
             } else {
                 executeGrep(file.readLines())
                 val fileResult = outputStream.getLines()
@@ -93,7 +85,7 @@ class GrepCommand(arguments: List<String>,
         }
 
         outputStream.clear()
-        outputStream.writeLines(result)
+        writeLines(result)
     }
 
     override fun execute() {

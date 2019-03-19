@@ -2,6 +2,7 @@ package ru.hse.spb.sd.sharkova.interpreter
 
 import org.junit.Assert.*
 import org.junit.Test
+import ru.hse.spb.sd.sharkova.interpreter.parser.CLIParser
 import java.io.IOException
 
 class InterpreterTest {

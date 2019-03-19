@@ -1,5 +1,8 @@
 package ru.hse.spb.sd.sharkova.interpreter.stream
 
+/**
+ * This class represents an output stream.
+ */
 open class OutputStream {
     private val output = mutableListOf<String>()
 
@@ -15,12 +18,14 @@ open class OutputStream {
 
     fun clear() = output.clear()
 
-    // TODO clear
-    fun writeOutput() = output.forEach { println(it) }
-
     fun toInputStream(): InputStream {
         val inputStream = InputStream(output.toList())
         clear()
         return inputStream
     }
 }
+
+/**
+ * This class represents an error stream.
+ */
+class ErrorStream : OutputStream()
