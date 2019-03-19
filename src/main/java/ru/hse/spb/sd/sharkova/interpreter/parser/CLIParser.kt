@@ -6,6 +6,7 @@ import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
 import ru.hse.spb.sd.sharkova.interpreter.stream.OutputStream
 import java.util.regex.Pattern
 
+
 /**
  * This class implements Parser interface
  * and supports double/single quotes, variable assignments,
