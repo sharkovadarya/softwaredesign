@@ -2,6 +2,7 @@ package ru.hse.spb.sd.sharkova.interpreter.integration
 
 import org.junit.Assert
 import org.junit.Test
+import ru.hse.spb.sd.sharkova.interpreter.stringWithNewline
 
 class EchoTest : InterpreterTest() {
     @Test
