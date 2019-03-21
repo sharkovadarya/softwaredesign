@@ -26,7 +26,6 @@ class GrepCommand(filenames: List<String>,
 
     private fun grep(regexString: String, lines: List<String>): List<String> {
         val resultingLinesIndices = LinkedHashSet<Int>()
-        val resultingLines = mutableListOf<String>()
         val newRegexString = generalRegexTemplate
                 .format(if (entireWord) wholeWordRegexTemplate.format(regexString) else regexString)
         val regexForUsage = if (caseInsensitive) Regex(caseInsensitiveRegexTemplate.format(newRegexString))
@@ -34,13 +33,11 @@ class GrepCommand(filenames: List<String>,
         for (i in 0 until lines.size) {
             if (regexForUsage.matches(lines[i])) {
                 resultingLinesIndices.add(i)
-                resultingLines.add(lines[i])
                 for (j in 1..nLinesAfter) {
                     if (i + j >= lines.size) {
                         break
                     }
                     resultingLinesIndices.add(i + j)
-                    resultingLines.add(lines[i + j])
                 }
             }
         }
@@ -51,7 +48,6 @@ class GrepCommand(filenames: List<String>,
                 lines[it]
             }
         }
-        //return resultingLines.toList()
     }
 
     private fun executeGrep(lines: List<String>) {

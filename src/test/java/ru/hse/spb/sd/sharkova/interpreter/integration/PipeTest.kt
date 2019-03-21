@@ -61,6 +61,12 @@ class PipeTest : InterpreterTest() {
     }
 
     @Test
+    fun testGrepIdenticalLines() {
+        val res = parser.parseInput("grep line src/test/resources/ident1.txt")
+        assertEquals(listStringsWithNewlines(List(5) { if (it == 4) "line    " else "line" }), res)
+    }
+
+    @Test
     fun testPipeGrep() {
         val res = parser.parseInput("cat src/test/resources/grep1.txt | grep word")
         assertEquals(listStringsWithNewlines(listOf("this is a word", "more words your way!")), res)
