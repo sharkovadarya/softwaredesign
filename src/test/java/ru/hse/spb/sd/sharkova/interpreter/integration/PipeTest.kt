@@ -56,7 +56,6 @@ class PipeTest : InterpreterTest() {
     @Test
     fun testWcNonexistentFileInPipe() {
         val res = parser.parseInput("echo some text | wc src/file1.txt | echo more text")
-        res.forEach { print(it) }
         assertEquals(listStringsWithNewlines(listOf("more text",
                 "wc: src/file1.txt: No such file or directory")), res)
     }
@@ -71,5 +70,11 @@ class PipeTest : InterpreterTest() {
     fun testPipeGrep() {
         val res = parser.parseInput("cat src/test/resources/grep1.txt | grep word")
         assertEquals(listStringsWithNewlines(listOf("this is a word", "more words your way!")), res)
+    }
+
+    @Test
+    fun testNoCommandAfterPipe() {
+        val res = parser.parseInput("echo text |           ")
+        assertEquals(listOf(stringWithNewline("Incorrect input: no command after command separator")), res)
     }
 }

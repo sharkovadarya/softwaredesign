@@ -1,6 +1,5 @@
 package ru.hse.spb.sd.sharkova.interpreter.integration
 
-import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import ru.hse.spb.sd.sharkova.interpreter.listStringsWithNewlines
@@ -50,9 +49,9 @@ class QuotesTest : InterpreterTest() {
     @Test
     fun testNestedQuotes() {
         val res1 = parser.parseInput("echo \'\"text\"\'")
-        assertEquals(listOf(stringWithNewline("text")), res1)
+        assertEquals(listOf(stringWithNewline("\"text\"")), res1)
         val res2 = parser.parseInput("echo \"\'text\'\"")
-        assertEquals(listOf(stringWithNewline("text")), res2)
+        assertEquals(listOf(stringWithNewline("\'text\'")), res2)
     }
 
     @Test
