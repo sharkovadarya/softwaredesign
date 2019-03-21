@@ -1,6 +1,6 @@
 package ru.hse.spb.sd.sharkova.interpreter.integration
 
-import org.junit.Assert
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import ru.hse.spb.sd.sharkova.interpreter.*
 
@@ -8,7 +8,7 @@ class CatTest : InterpreterTest() {
     @Test
     fun testCat() {
         val res = parser.parseInput("cat src/test/resources/file1.txt")
-        Assert.assertEquals(file1Lines, res)
+        assertEquals(file1Lines, res)
     }
 
     @Test
@@ -18,18 +18,18 @@ class CatTest : InterpreterTest() {
         expected.addAll(file1Lines)
         expected.addAll(file2Lines)
 
-        Assert.assertEquals(expected, res)
+        assertEquals(expected, res)
     }
 
     @Test
     fun testCatNonexistentFile() {
         val res = parser.parseInput("cat file1.txt")
-        Assert.assertEquals(listOf("cat: file1.txt: No such file or directory"), res)
+        assertEquals(listOf(stringWithNewline("cat: file1.txt: No such file or directory")), res)
     }
 
     @Test
     fun testCatDirectory() {
         val res = parser.parseInput("cat src/test/resources")
-        Assert.assertEquals(listOf("cat: src/test/resources: Is a directory"), res)
+        assertEquals(listOf(stringWithNewline("cat: src/test/resources: Is a directory")), res)
     }
 }

@@ -25,42 +25,37 @@ class GrepCommand(filenames: List<String>,
     private val wholeWordRegexTemplate = "\\b%s\\b"
 
     private fun grep(regexString: String, lines: List<String>): List<String> {
-        val result = mutableListOf<String>()
-        val regexForUsage = if (caseInsensitive) {
-            Regex(caseInsensitiveRegexTemplate.format(generalRegexTemplate.format(regexString)))
-        } else {
-            Regex(generalRegexTemplate.format(regexString))
-        }
-        lines.forEach { if (regexForUsage.matches(it)) result.add(it) }
-        return result
-    }
-
-    private fun wholeWordGrep(regexString: String, lines: List<String>): List<String> {
-        return grep(wholeWordRegexTemplate.format(regexString), lines)
-    }
-
-    private fun afterMatchGrep(regexString: String, lines: List<String>): List<String> {
-        val resultingLines = LinkedHashSet<String>()
+        val resultingLinesIndices = LinkedHashSet<Int>()
+        val resultingLines = mutableListOf<String>()
         val newRegexString = generalRegexTemplate
                 .format(if (entireWord) wholeWordRegexTemplate.format(regexString) else regexString)
         val regexForUsage = if (caseInsensitive) Regex(caseInsensitiveRegexTemplate.format(newRegexString))
-        else Regex(newRegexString)
+            else Regex(newRegexString)
         for (i in 0 until lines.size) {
             if (regexForUsage.matches(lines[i])) {
+                resultingLinesIndices.add(i)
                 resultingLines.add(lines[i])
                 for (j in 1..nLinesAfter) {
                     if (i + j >= lines.size) {
                         break
                     }
+                    resultingLinesIndices.add(i + j)
                     resultingLines.add(lines[i + j])
                 }
             }
         }
-        return resultingLines.toList()
+        return resultingLinesIndices.map {
+            if (!lines[it].contains(System.lineSeparator())) {
+                lines[it] + System.lineSeparator()
+            } else {
+                lines[it]
+            }
+        }
+        //return resultingLines.toList()
     }
 
     private fun executeGrep(lines: List<String>) {
-        writeLines(afterMatchGrep(regexString, lines))
+        writeLines(grep(regexString, lines))
     }
 
     private fun executeFileGrep(filenames: List<String>) {
@@ -89,10 +84,17 @@ class GrepCommand(filenames: List<String>,
     }
 
     override fun execute() {
+        if (!checkGrepArguments()) {
+            writeError("grep: Incorrect arguments")
+            return
+        }
         if (arguments.isEmpty()) {
             executeGrep(inputStream.readLines())
         } else {
             executeFileGrep(arguments)
         }
     }
+
+    // if any more arguments are added, they can also be checked here
+    private fun checkGrepArguments(): Boolean = nLinesAfter >= 0
 }

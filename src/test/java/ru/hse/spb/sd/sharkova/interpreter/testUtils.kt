@@ -15,3 +15,5 @@ const val file2Wc = "0 109 651"
 
 
 fun stringWithNewline(string: String) = string + System.lineSeparator()
+
+fun listStringsWithNewlines(lines: List<String>) = lines.map { stringWithNewline(it) }

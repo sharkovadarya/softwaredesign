@@ -2,6 +2,7 @@ package ru.hse.spb.sd.sharkova.interpreter.parser
 
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.Parameter
+import com.beust.jcommander.ParameterException
 import ru.hse.spb.sd.sharkova.interpreter.Interpreter
 import ru.hse.spb.sd.sharkova.interpreter.stream.ErrorStream
 import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
@@ -35,13 +36,18 @@ class CommandProcessor(private val interpreter: Interpreter,
     private fun processGrep(arguments: List<String>, inputStream: InputStream) {
         val args = GrepArguments()
         val argsArray = arguments.toTypedArray()
-        JCommander.newBuilder().addObject(args).build().parse(*argsArray)
+        try {
+            JCommander.newBuilder().addObject(args).build().parse(*argsArray)
+        } catch (e: ParameterException) {
+            errorStream.writeLine("grep: Incorrect arguments${System.lineSeparator()}")
+            return
+        }
 
         val caseInsensitive = args.caseInsensitive
         val entireWord = args.entireWords
         val nLinesAfter = args.nLinesAfter
         if (args.parameters.isEmpty()) {
-            errorStream.writeLine("grep: not enough arguments.")
+            errorStream.writeLine("grep: Not enough arguments${System.lineSeparator()}")
             return
         }
 

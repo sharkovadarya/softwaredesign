@@ -19,7 +19,7 @@ class ExternalCommand(arguments: List<String>,
                     .redirectErrorStream(true)
                     .start()
 
-            writeLines(processBuilder.inputStream.bufferedReader().readLines())
+            writeLines(processBuilder.inputStream.bufferedReader().readLines().map { it + System.lineSeparator() })
         } catch (e: IOException) {
             writeError(e.message ?: "Could not execute external command.")
         }

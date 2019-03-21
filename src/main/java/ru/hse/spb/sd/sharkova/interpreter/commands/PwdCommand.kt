@@ -10,6 +10,6 @@ class PwdCommand(inputStream: InputStream,
                  outputStream: OutputStream,
                  errorStream: ErrorStream) : Command(emptyList(), inputStream, outputStream, errorStream) {
     override fun execute() {
-        writeLine(System.getProperty("user.dir"))
+        writeLine(System.getProperty("user.dir") + System.lineSeparator())
     }
 }
