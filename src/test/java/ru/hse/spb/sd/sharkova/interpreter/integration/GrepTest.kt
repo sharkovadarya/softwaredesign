@@ -110,6 +110,12 @@ class GrepTest : InterpreterTest() {
     }
 
     @Test
+    fun testGrepIdenticalLines() {
+        val res = parser.parseInput("grep line src/test/resources/ident1.txt")
+        assertEquals(listStringsWithNewlines(List(5) { if (it == 4) "line    " else "line" }), res)
+    }
+
+    @Test
     fun testGrepNonexistentFile() {
         val res = parser.parseInput("grep -i word grep1.txt")
         assertEquals(listOf(stringWithNewline("grep: grep1.txt: No such file or directory")), res)
