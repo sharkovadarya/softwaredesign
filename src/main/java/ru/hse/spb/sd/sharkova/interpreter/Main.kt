@@ -11,6 +11,6 @@ fun main() {
     while (true) {
         val command = readLine() ?: return
         val res = parser.parseInput(command)
-        res.forEach { println(it) }
+        res.forEach { print(it) }
     }
 }

@@ -20,6 +20,10 @@ class CLIParser : Parser {
 
     override fun parseInput(input: String): List<String> {
         val words = commandReader.processInput(input)
+        if (words.last() == CommandReader.commandSeparator) {
+            errorStream.writeLine("Incorrect input: no command after command separator${System.lineSeparator()}")
+            return errorStream.getLines()
+        }
 
         var commandNamePos = 0
         while (commandNamePos < words.size) {

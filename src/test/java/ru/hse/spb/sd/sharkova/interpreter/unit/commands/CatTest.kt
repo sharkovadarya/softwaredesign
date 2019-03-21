@@ -1,6 +1,5 @@
 package ru.hse.spb.sd.sharkova.interpreter.unit.commands
 
-import org.junit.Assert
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import ru.hse.spb.sd.sharkova.interpreter.commands.CatCommand
@@ -14,7 +13,7 @@ class CatTest : CommandTest() {
     fun testCat() {
         val command = constructCommand(listOf("src/test/resources/file1.txt"))
         command.execute()
-        Assert.assertEquals(file1Lines, outputStream.getLines())
+        assertEquals(file1Lines, outputStream.getLines())
     }
 
     @Test
@@ -33,14 +32,14 @@ class CatTest : CommandTest() {
     fun testCatNonexistentFile() {
         val command = constructCommand(listOf("file1.txt"))
         command.execute()
-        assertEquals(listOf("cat: file1.txt: No such file or directory"), errorStream.getLines())
+        assertEquals(listOf(stringWithNewline("cat: file1.txt: No such file or directory")), errorStream.getLines())
     }
 
     @Test
     fun testCatDirectory() {
         val command = constructCommand(listOf("src/test/resources"))
         command.execute()
-        assertEquals(listOf("cat: src/test/resources: Is a directory"), errorStream.getLines())
+        assertEquals(listOf(stringWithNewline("cat: src/test/resources: Is a directory")), errorStream.getLines())
     }
 
     @Test

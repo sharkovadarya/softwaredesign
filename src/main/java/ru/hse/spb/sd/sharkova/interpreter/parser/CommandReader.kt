@@ -1,17 +1,24 @@
 package ru.hse.spb.sd.sharkova.interpreter.parser
 
 import java.util.regex.Pattern
+import java.lang.StringBuilder
 
 /**
  * This class reads a command from the given input
  * and parses its name, arguments and the position of the next command.
  */
 class CommandReader {
+    companion object {
+        const val commandSeparator = "|"
+    }
+
     private val identifierRegex = Regex("[_a-z][_a-z0-9]*")
     private val substitutionRegex = Regex("\\$$identifierRegex")
     private val substitutionPattern = Pattern.compile(substitutionRegex.pattern)
     private val identifierAssignmentPattern = Pattern.compile("^$identifierRegex=")
     private val quotesPattern = """(["]+[^"]+?["]+)|([']+[^']+?[']+)"""
+    private val singleQuotesPattern = Pattern.compile("([']+[^']+?[']+)")
+    private val doubleQuotesPattern = Pattern.compile("""(["]+[^"]+?["]+)""")
     private val quotesRegex = Regex(quotesPattern)
 
     private val valuesStorage = ValuesStorage()
@@ -38,7 +45,7 @@ class CommandReader {
 
         val args = mutableListOf<String>()
         while (commandNamePos < words.size &&
-                (words[commandNamePos].matches(quotesRegex) || !words[commandNamePos].contains("|"))) {
+                (words[commandNamePos].matches(quotesRegex) || !words[commandNamePos].contains(commandSeparator))) {
             args.add(processArgument(words[commandNamePos]))
             commandNamePos++
         }
@@ -127,7 +134,6 @@ class CommandReader {
     }
 
     private fun extractQuotes(string: String): String {
-        var str = string.trim()
         var shouldPerformSubstitution = true
 
         fun extractQuotes(string: String, quote: Char): Triple<String, String, String>? {
@@ -149,13 +155,9 @@ class CommandReader {
             return null
         }
 
-        while (true) {
-            val extractedSingleQuotesString = extractQuotes(str, '\'')
-            if (extractedSingleQuotesString != null) {
-                str = extractedSingleQuotesString.first +
-                        extractedSingleQuotesString.second +
-                        extractedSingleQuotesString.third
-            } else {
+        fun extractAllDoubleQuotes(string: String): String {
+            var str = string.trim()
+            while (true) {
                 val extractedDoubleQuotesString = extractQuotes(str, '\"')
                 if (extractedDoubleQuotesString != null) {
                     val substr = if (shouldPerformSubstitution) {
@@ -169,9 +171,42 @@ class CommandReader {
                     break
                 }
             }
+
+            return str
         }
 
-        return str
+        fun extractAllSingleQuotes(string: String): String {
+            var str = string.trim()
+            while (true) {
+                val extractedSingleQuotesString = extractQuotes(str, '\'')
+                if (extractedSingleQuotesString != null) {
+                    str = extractedSingleQuotesString.first +
+                            extractedSingleQuotesString.second +
+                            extractedSingleQuotesString.third
+                } else {
+                    break
+                }
+            }
+
+            return str
+        }
+
+        val singleQuotePos = string.indexOf('\'')
+        val doubleQuotePos = string.indexOf('\"')
+
+        return if (singleQuotePos == -1) {
+            if (doubleQuotePos == -1) {
+                return string
+            }
+            extractAllDoubleQuotes(string)
+        } else {
+            if (doubleQuotePos == -1 || singleQuotePos < doubleQuotePos) {
+                extractAllSingleQuotes(string)
+            } else {
+                extractAllDoubleQuotes(string)
+            }
+        }
+
     }
 
     private fun checkQuotesAbsence(string: String): Boolean {

@@ -1,15 +1,17 @@
 package ru.hse.spb.sd.sharkova.interpreter.integration
 
-import org.junit.Assert
+import org.junit.Assert.assertEquals
 import org.junit.Test
-import ru.hse.spb.sd.sharkova.interpreter.*
+import ru.hse.spb.sd.sharkova.interpreter.file1Lines
+import ru.hse.spb.sd.sharkova.interpreter.listStringsWithNewlines
+import ru.hse.spb.sd.sharkova.interpreter.stringWithNewline
 
 class SubstitutionTest : InterpreterTest() {
     @Test
     fun testVariableSubstitutionEcho() {
         parser.parseInput("x=texttext")
         val res = parser.parseInput("echo \$x")
-        Assert.assertEquals(listOf(stringWithNewline("texttext")), res)
+        assertEquals(listOf(stringWithNewline("texttext")), res)
     }
 
     @Test
@@ -17,17 +19,17 @@ class SubstitutionTest : InterpreterTest() {
         parser.parseInput("x=texttext")
         parser.parseInput("y=x")
         val res1 = parser.parseInput("echo \$y")
-        Assert.assertEquals(listOf(stringWithNewline("x")), res1)
+        assertEquals(listOf(stringWithNewline("x")), res1)
         parser.parseInput("y=\$x")
         val res2 = parser.parseInput("echo \$y")
-        Assert.assertEquals(listOf(stringWithNewline("texttext")), res2)
+        assertEquals(listOf(stringWithNewline("texttext")), res2)
     }
 
     @Test
     fun testSubstituteEchoWithSpaces() {
         parser.parseInput("x=text")
         val res = parser.parseInput("echo \"   \$x\"")
-        Assert.assertEquals(listOf(stringWithNewline("   text")), res)
+        assertEquals(listOf(stringWithNewline("   text")), res)
     }
 
     @Test
@@ -35,13 +37,13 @@ class SubstitutionTest : InterpreterTest() {
         parser.parseInput("x=tt")
         parser.parseInput("y=echo")
         val res = parser.parseInput("\$y text\$xтекст\$x")
-        Assert.assertEquals(listOf(stringWithNewline("textttтекстtt")), res)
+        assertEquals(listOf(stringWithNewline("textttтекстtt")), res)
     }
 
     @Test
     fun testNoIdentifierDollarSignEcho() {
         val res = parser.parseInput("echo \$не_идентификатор")
-        Assert.assertEquals(listOf(stringWithNewline("\$не_идентификатор")), res)
+        assertEquals(listOf(stringWithNewline("\$не_идентификатор")), res)
     }
 
 
@@ -49,14 +51,14 @@ class SubstitutionTest : InterpreterTest() {
     fun testSubstituteFilenameCat() {
         parser.parseInput("x=src/test/resources/file1.txt")
         val res = parser.parseInput("cat \$x")
-        Assert.assertEquals(file1Lines, res)
+        assertEquals(file1Lines, res)
     }
 
     @Test
     fun testSubstitutePwd() {
         parser.parseInput("x=pwd")
         val res = parser.parseInput("\$x")
-        Assert.assertEquals("pwd".runCommand(), res)
+        assertEquals(listStringsWithNewlines("pwd".runCommand()), res)
     }
 
     @Test
@@ -65,9 +67,9 @@ class SubstitutionTest : InterpreterTest() {
         parser.parseInput("b=wd")
         val res1 = parser.parseInput("\$a\$b")
         val res2 = parser.parseInput("p\$b")
-        val expected = "pwd".runCommand()
-        Assert.assertEquals(expected, res1)
-        Assert.assertEquals(expected, res2)
+        val expected = listStringsWithNewlines("pwd".runCommand())
+        assertEquals(expected, res1)
+        assertEquals(expected, res2)
     }
 
 
@@ -75,6 +77,6 @@ class SubstitutionTest : InterpreterTest() {
     fun testAssignedCommandName() {
         parser.parseInput("x=echo")
         val res = parser.parseInput("\$x text")
-        Assert.assertEquals(listOf(stringWithNewline("text")), res)
+        assertEquals(listOf(stringWithNewline("text")), res)
     }
 }

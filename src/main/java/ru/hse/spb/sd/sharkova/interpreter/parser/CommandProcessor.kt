@@ -8,7 +8,7 @@ import ru.hse.spb.sd.sharkova.interpreter.stream.OutputStream
 /**
  * This class matches a command assembled from its name and argument list
  * to a method which interprets it and invokes that method.
- * Supported commands: cat, echo, wc, pwd, exit, grep;
+ * Supported commands: cat, echo, wc, pwd, exit;
  * other commands are treated as external commands.
  */
 class CommandProcessor(private val interpreter: Interpreter,

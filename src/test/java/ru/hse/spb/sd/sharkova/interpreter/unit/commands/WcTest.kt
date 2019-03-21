@@ -33,14 +33,14 @@ class WcTest : CommandTest() {
     fun testWcNonexistentFile() {
         val command = constructCommand(listOf("file1.txt"))
         command.execute()
-        assertEquals(listOf("wc: file1.txt: No such file or directory"), errorStream.getLines())
+        assertEquals(listOf(stringWithNewline("wc: file1.txt: No such file or directory")), errorStream.getLines())
     }
 
     @Test
     fun testWcDirectory() {
         val command = constructCommand(listOf("src/test"))
         command.execute()
-        assertEquals(listOf("wc: src/test: Is a directory"), errorStream.getLines())
+        assertEquals(listOf(stringWithNewline("wc: src/test: Is a directory")), errorStream.getLines())
     }
 
     @Test

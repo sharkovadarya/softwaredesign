@@ -24,7 +24,7 @@ abstract class Command(protected val arguments: List<String>,
 
     protected fun writeLines(lines: List<String>) = outputStream.writeLines(lines)
 
-    protected fun writeError(errorMessage: String) = errorStream.writeLine(errorMessage)
+    protected fun writeError(errorMessage: String) = errorStream.writeLine(errorMessage + System.lineSeparator())
 
     protected fun writeError(commandName: String, argumentName: String, errorMessage: String) =
             writeError("$commandName: $argumentName: $errorMessage")

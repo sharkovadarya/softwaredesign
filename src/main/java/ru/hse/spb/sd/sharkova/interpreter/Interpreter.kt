@@ -5,7 +5,7 @@ import ru.hse.spb.sd.sharkova.interpreter.stream.*
 
 /**
  * This class interprets and executes commands with arguments.
- * Supported commands: echo, cat, wc, pwd, exit;
+ * Supported commands: echo, cat, wc, grep, pwd, exit;
  * other commands are handled as external commands.
  * */
 class Interpreter {
