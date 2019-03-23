@@ -1,0 +1,4 @@
+text
+line
+
+the previous line was an empty one
