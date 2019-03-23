@@ -3,8 +3,7 @@ package ru.hse.spb.sd.sharkova.interpreter.unit.commands
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import ru.hse.spb.sd.sharkova.interpreter.commands.CatCommand
-import ru.hse.spb.sd.sharkova.interpreter.file1Lines
-import ru.hse.spb.sd.sharkova.interpreter.file2Lines
+import ru.hse.spb.sd.sharkova.interpreter.*
 import ru.hse.spb.sd.sharkova.interpreter.stream.InputStream
 import ru.hse.spb.sd.sharkova.interpreter.stringWithNewline
 
@@ -19,11 +18,11 @@ class CatTest : CommandTest() {
     @Test
     fun testCatMultipleArguments() {
         val command = constructCommand(listOf("src/test/resources/file1.txt",
-                "src/test/resources/file2.txt"))
+                "src/test/resources/file3.txt"))
         command.execute()
         val expected = mutableListOf<String>()
         expected.addAll(file1Lines)
-        expected.addAll(file2Lines)
+        expected.addAll(file3Lines)
 
         assertEquals(expected, outputStream.getLines())
     }
