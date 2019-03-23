@@ -31,14 +31,16 @@ class PipeTest : InterpreterTest() {
 
     @Test
     fun testPipeCatMultipleFilesWc() {
-        val res = parser.parseInput("cat src/test/resources/file1.txt src/test/resources/file2.txt   | wc")
-        assertEquals(listOf(stringWithNewline("4 118 697")), res)
+        //val res = parser.parseInput("cat src/test/resources/file1.txt src/test/resources/file2.txt   | wc")
+        //assertEquals(listOf(stringWithNewline("4 118 697")), res)
+        val res = parser.parseInput("cat src/test/resources/file1.txt src/test/resources/file3.txt   | wc")
+        assertEquals(listOf(stringWithNewline(totalWc13)), res)
     }
 
     @Test
     fun testPipeEchoWc() {
         val res = parser.parseInput("echo echo echo | wc")
-        assertEquals(listOf(stringWithNewline("1 2 10")), res)
+        assertEquals(listOf(stringWithNewline("1 2 ${9 + System.lineSeparator().length}")), res)
     }
 
     @Test
@@ -50,7 +52,7 @@ class PipeTest : InterpreterTest() {
     @Test
     fun testPipeDoubleWc() {
         val res = parser.parseInput("wc src/test/resources/file1.txt | wc")
-        assertEquals(listOf(stringWithNewline("1 4 17")), res)
+        assertEquals(listOf(stringWithNewline("1 4 ${16 + System.lineSeparator().length}")), res)
     }
 
     @Test

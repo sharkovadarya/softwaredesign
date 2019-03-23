@@ -11,12 +11,24 @@ class CatTest : InterpreterTest() {
         assertEquals(file1Lines, res)
     }
 
-    @Test
-    fun testCatMultipleArguments() {
+    // you can run this test on linux or in IntelliJ IDEA via its testing options.
+    // do not run this test on Windows via gradle, it messes up the encoding in file2Lines
+    /*@Test
+    fun testCatMultipleArgumentsFile2() {
         val res = parser.parseInput("cat src/test/resources/file1.txt src/test/resources/file2.txt")
         val expected = mutableListOf<String>()
         expected.addAll(file1Lines)
         expected.addAll(file2Lines)
+
+        assertEquals(expected, res)
+    }*/
+
+    @Test
+    fun testCatMultipleArguments() {
+        val res = parser.parseInput("cat src/test/resources/file1.txt src/test/resources/file3.txt")
+        val expected = mutableListOf<String>()
+        expected.addAll(file1Lines)
+        expected.addAll(file3Lines)
 
         assertEquals(expected, res)
     }

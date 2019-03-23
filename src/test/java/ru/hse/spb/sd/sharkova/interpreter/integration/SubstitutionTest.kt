@@ -5,6 +5,7 @@ import org.junit.Test
 import ru.hse.spb.sd.sharkova.interpreter.file1Lines
 import ru.hse.spb.sd.sharkova.interpreter.listStringsWithNewlines
 import ru.hse.spb.sd.sharkova.interpreter.stringWithNewline
+import kotlin.math.exp
 
 class SubstitutionTest : InterpreterTest() {
     @Test
@@ -58,7 +59,10 @@ class SubstitutionTest : InterpreterTest() {
     fun testSubstitutePwd() {
         parser.parseInput("x=pwd")
         val res = parser.parseInput("\$x")
-        assertEquals(listStringsWithNewlines("pwd".runCommand()), res)
+        // the line below can be used on systems where "pwd" command is present
+        //assertEquals(listStringsWithNewlines("pwd".runCommand()), res)
+        val expected = listStringsWithNewlines(listOf(System.getProperty("user.dir")))
+        assertEquals(expected, res)
     }
 
     @Test
@@ -67,11 +71,12 @@ class SubstitutionTest : InterpreterTest() {
         parser.parseInput("b=wd")
         val res1 = parser.parseInput("\$a\$b")
         val res2 = parser.parseInput("p\$b")
-        val expected = listStringsWithNewlines("pwd".runCommand())
+        // the line below can be used on systems where "pwd" command is present
+        //val expected = listStringsWithNewlines("pwd".runCommand())
+        val expected = listStringsWithNewlines(listOf(System.getProperty("user.dir")))
         assertEquals(expected, res1)
         assertEquals(expected, res2)
     }
-
 
     @Test
     fun testAssignedCommandName() {
