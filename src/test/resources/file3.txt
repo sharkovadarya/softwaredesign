@@ -1,0 +1,1 @@
+since running 'gradle test' on windows somehow messes up the encoding and i couldn't find a way to fix it, i'll have to use another overly long string without a line separator instead. by the way, if you run the test in intellij idea, without using gradle, everything works, but gradle somehow messes up diacritic characters in string, i'm not sure why. what a pity. anyway.
